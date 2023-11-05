@@ -1,4 +1,4 @@
-module src(
+module tt_um_src(
     input clk,
     input reset,
     input [4:0] sw,
