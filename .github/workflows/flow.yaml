@@ -18,7 +18,7 @@ jobs:
         with:
           python-version: '3.9'
           
-      - name: Cache OpenLane and PDK
+      - name: Cache OpenLane y PDK
         if: steps.cache-ol.outputs.cache-hit != 'true'
         uses: actions/cache@v2
         id: cache-ol
@@ -47,14 +47,34 @@ jobs:
           cd ${{ github.workspace }}/OL/OpenLane
           make test
           
-      - name: Revisar y guardar version OpenLane
+      - name: Verificar y ajustar etiqueta de OpenLane
         if: steps.cache-ol.outputs.cache-hit != 'true'
         run: |
-          docker images
-          OPENLANE_TAG=$(docker images --format '{{.Repository}} {{.Tag}}' | grep '^efabless/openlane ' | awk '{print $2}')
-          echo "OPENLANE_TAG=${OPENLANE_TAG}"
-          docker save -o ${{ github.workspace }}/OL/cached_image.tar efabless/openlane:${OPENLANE_TAG}
-          
+          echo "Listando etiquetas disponibles para 'efabless/openlane':"
+          docker images --format '{{.Repository}}:{{.Tag}}' | grep '^efabless/openlane'
+      
+          # Buscar primero etiquetas simples
+          OPENLANE_TAG=$(docker images --format '{{.Tag}}' | grep -E '^[0-9a-f]{40}$' | head -n 1)
+          if [ -z "$OPENLANE_TAG" ]; then
+            # Si no hay etiquetas simples, buscar las que terminen con -amd64
+            OPENLANE_TAG=$(docker images --format '{{.Tag}}' | grep -E '^[0-9a-f]{40}-amd64$' | head -n 1)
+          fi
+      
+          if [ -z "$OPENLANE_TAG" ]; then
+            echo "ERROR: No se encontró ninguna etiqueta válida para 'efabless/openlane'."
+            exit 1
+          fi
+      
+          echo "Etiqueta seleccionada: $OPENLANE_TAG"
+          echo "OPENLANE_TAG=${OPENLANE_TAG}" >> $GITHUB_ENV
+
+      - name: Guardar Versión de OpenLane
+        if: steps.cache-ol.outputs.cache-hit != 'true'
+        run: |
+            echo "Guardando la imagen de OpenLane con etiqueta: $OPENLANE_TAG"
+            docker save -o ${{ github.workspace }}/OL/cached_image.tar efabless/openlane:${OPENLANE_TAG}
+        
+
   Run:
     runs-on: ubuntu-latest
     needs: Instalacion
