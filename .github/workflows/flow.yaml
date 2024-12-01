@@ -97,6 +97,12 @@ jobs:
           cp -r ${{ github.workspace }}/src ${{ github.workspace }}/OL/OpenLane/designs/
           echo "Etiquetas disponibles para 'efabless/openlane':"
           docker images --format '{{.Repository}}:{{.Tag}}' | grep '^efabless/openlane'
+
+          if [ -z "$OPENLANE_TAG" ]; then
+            # Si no aparece la etiqueta, asignarla
+            OPENLANE_TAG=$(docker images --format '{{.Tag}}' | grep -E '^[0-9a-f]{40}$' | head -n 1)
+          fi
+          echo "Etiqueta detectada para OpenLane: ${{ env.OPENLANE_TAG }}"
           
       - name: Run Nueva
         uses: addnab/docker-run-action@v3
