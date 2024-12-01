@@ -102,6 +102,7 @@ jobs:
 
           # Como no se mantiene la variable, reasignarla.
           OPENLANE_TAG=$(docker images --format '{{.Tag}}' | grep -E '^[0-9a-f]{40}$' | head -n 1)
+          echo "OPENLANE_TAG=${OPENLANE_TAG}" >> $GITHUB_ENV
           echo "Etiqueta detectada para OpenLane: ${{ env.OPENLANE_TAG }}"
           
       - name: Run Nueva
