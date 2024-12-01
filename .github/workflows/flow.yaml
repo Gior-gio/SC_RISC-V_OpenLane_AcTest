@@ -95,6 +95,8 @@ jobs:
         run: |
           docker load -i ${{ github.workspace }}/OL/cached_image.tar
           cp -r ${{ github.workspace }}/src ${{ github.workspace }}/OL/OpenLane/designs/
+          echo "Etiquetas disponibles para 'efabless/openlane':"
+          docker images --format '{{.Repository}}:{{.Tag}}' | grep '^efabless/openlane'
           
       - name: Run Nueva
         uses: addnab/docker-run-action@v3
