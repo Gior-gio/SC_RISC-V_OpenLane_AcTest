@@ -95,13 +95,13 @@ jobs:
         run: |
           docker load -i ${{ github.workspace }}/OL/cached_image.tar
           cp -r ${{ github.workspace }}/src ${{ github.workspace }}/OL/OpenLane/designs/
+
+          # Check Docker images
           echo "Etiquetas disponibles para 'efabless/openlane':"
           docker images --format '{{.Repository}}:{{.Tag}}' | grep '^efabless/openlane'
 
-          if [ -z "$OPENLANE_TAG" ]; then
-            # Si no aparece la etiqueta, asignarla
-            OPENLANE_TAG=$(docker images --format '{{.Tag}}' | grep -E '^[0-9a-f]{40}$' | head -n 1)
-          fi
+          # Como no se mantiene la variable, reasignarla.
+          OPENLANE_TAG=$(docker images --format '{{.Tag}}' | grep -E '^[0-9a-f]{40}$' | head -n 1)
           echo "Etiqueta detectada para OpenLane: ${{ env.OPENLANE_TAG }}"
           
       - name: Run Nueva
