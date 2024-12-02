@@ -66,6 +66,7 @@ always @(*) begin                               //Mux 4 a 1 de Result
     endcase
 end
 //_________________________________________________________________________//
+/*
 ROM ROM_Inst(
     //.clk(clk),
     .PC(PC),
@@ -134,5 +135,5 @@ InputBlock InputBlock_per(
     .dir(ALUResult[4:0]),
     .ReadDataOut(ReadDataOut)
 );
-
+*/
 endmodule
