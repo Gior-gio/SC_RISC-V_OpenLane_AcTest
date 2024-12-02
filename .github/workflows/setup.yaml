@@ -1,0 +1,57 @@
+name: Setup
+
+on:
+  push:
+  workflow_dispatch:
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  setup-openlane:
+    runs-on: ubuntu-20.04
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update && sudo apt-get install -y \
+          build-essential \
+          python3 \
+          python3-pip \
+          python3-venv \
+          libffi-dev \
+          tcl-dev \
+          swig \
+          cmake \
+          git \
+          wget \
+          unzip
+
+      - name: Install Python dependencies
+        run: |
+          pip3 install --upgrade pip
+          pip3 install -r requirements.txt
+
+      - name: Clone OpenLane repository
+        run: |
+          git clone https://github.com/The-OpenROAD-Project/OpenLane.git
+          cd OpenLane
+          make pull-openlane
+
+      - name: Set up OpenLane environment
+        run: |
+          cd OpenLane
+          make
+
+      - name: Verify installation
+        run: |
+          cd OpenLane
+          ./flow.tcl -help
