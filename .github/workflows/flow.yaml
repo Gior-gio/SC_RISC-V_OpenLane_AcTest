@@ -1,4 +1,4 @@
-name: Setup
+name: Digital Flow
 
 on:
   push:
@@ -40,13 +40,27 @@ jobs:
           cd OpenLane
           make
 
-      - name: Verify installation
+  run-openlane:
+    needs: setup-openlane
+    runs-on: ubuntu-20.04
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Reuse OpenLane setup
+        run: |
+          mv OpenLane/ ./OpenLane
+
+      - name: Run OpenLane Flow
         run: |
           cd OpenLane
-          make test
+          docker run --rm -v $(pwd)/Design:/work/designs/Design -w /work \
+          theopenroad/openlane:latest \
+          flow.tcl -design Design
 
-      - name: Save OpenLane setup
+      - name: Upload results
         uses: actions/upload-artifact@v3
         with:
-          name: openlane-setup
-          path: OpenLane/
+          name: openlane-results
+          path: OpenLane/runs/
