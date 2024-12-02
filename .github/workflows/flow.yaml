@@ -24,7 +24,7 @@ jobs:
           swig \
           cmake 
 
-      - name: Install Python dependencies
+      - name: Install Python dSependencies
         run: |
           pip3 install --upgrade pip
           pip3 install -r Dependencies/requirements_python.txt
@@ -47,10 +47,6 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
-
-      - name: Reuse OpenLane setup
-        run: |
-          mv OpenLane/ ./OpenLane
 
       - name: Run OpenLane Flow
         run: |
