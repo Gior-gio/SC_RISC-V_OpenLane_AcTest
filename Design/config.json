@@ -1,0 +1,8 @@
+{
+    "DESIGN_NAME": "top_module",
+    "VERILOG_FILES": "dir::Verilog/*.v",
+    "CLOCK_PORT": "clk",
+    "CLOCK_PERIOD": 10.0,
+    "PL_TARGET_DENSITY": 0.7
+  }
+  
