@@ -40,6 +40,18 @@ jobs:
           cd OpenLane
           make
 
+      - name: Test Openlane
+        run: |
+          cd OpenLane
+          make test
+
+      - name: Save OpenLane setup
+        uses: actions/upload-artifact@v3
+        with:
+          name: openlane-setup
+          path: OpenLane/
+
+
   run-openlane:
     needs: setup-openlane
     runs-on: ubuntu-20.04
@@ -47,6 +59,12 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
+
+      - name: Download OpenLane setup
+        uses: actions/download-artifact@v3
+        with:
+          name: openlane-setup
+          path: OpenLane/
 
       - name: Run OpenLane Flow
         run: |
