@@ -1,255 +1,233 @@
-name: openlane
-on:
-  workflow_dispatch:
+name: 'Tiny Tapeout GDS Action'
+description: 'This action builds a GDS file from your Tiny Tapeout project'
+branding:
+  color: purple
+  icon: layers
 
-jobs:
-  Instalacion:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Repositorio principal
-        uses: actions/checkout@v3
-        with:
-          repository: tinytapeout/tt-support-tools
-          path: tt
-          ref: tt05
+inputs:
+  tools-repo:
+    description: 'Override tt-support-tools repository'
+    default: 'TinyTapeout/tt-support-tools'
+    required: false
+    type: string
+  tools-ref:
+    description: 'Override tt-support-tools branch/tag/commit'
+    default: 'tt10'
+    required: false
+    type: string
+  flow:
+    description: 'Flow used for hardening the chip'
+    default: 'openlane2'
+    required: false
+    type: choice
+    options:
+      - openlane1
+      - openlane2
 
-      - name: Instalar Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.9'
-          
-      - name: Cache OpenLane y PDK
-        if: steps.cache-ol.outputs.cache-hit != 'true'
-        uses: actions/cache@v2
-        id: cache-ol
-        with:
-          path: |
-            /home/runner/.volare
-            ${{ github.workspace }}/OL
-          key: cache-key-${{ runner.os }}
-          
-      - name: Clonar OpenLane
-        if: steps.cache-ol.outputs.cache-hit != 'true'
-        run: |
-          mkdir  ${{ github.workspace }}/OL
-          cd ${{ github.workspace }}/OL
-          git clone --depth 1 https://github.com/The-OpenROAD-Project/OpenLane.git
-          
-      - name: Instalar OpenLane
-        if: steps.cache-ol.outputs.cache-hit != 'true'
-        run: |
-          cd ${{ github.workspace }}/OL/OpenLane
-          make
-          
-      - name: Correr Test
-        if: steps.cache-ol.outputs.cache-hit != 'true'
-        run: |
-          cd ${{ github.workspace }}/OL/OpenLane
-          make test
-          
-      - name: Verificar y ajustar etiqueta de OpenLane
-        if: steps.cache-ol.outputs.cache-hit != 'true'
-        run: |
-          echo "Listando etiquetas disponibles para 'efabless/openlane':"
-          docker images --format '{{.Repository}}:{{.Tag}}' | grep '^efabless/openlane'
-      
-          # Buscar primero etiquetas simples
-          OPENLANE_TAG=$(docker images --format '{{.Tag}}' | grep -E '^[0-9a-f]{40}$' | head -n 1)
-          if [ -z "$OPENLANE_TAG" ]; then
-            # Si no hay etiquetas simples, buscar las que terminen con -amd64
-            OPENLANE_TAG=$(docker images --format '{{.Tag}}' | grep -E '^[0-9a-f]{40}-amd64$' | head -n 1)
-          fi
-      
-          if [ -z "$OPENLANE_TAG" ]; then
-            echo "ERROR: No se encontró ninguna etiqueta válida para 'efabless/openlane'."
-            exit 1
-          fi
-      
-          echo "Etiqueta seleccionada: $OPENLANE_TAG"
-          echo "OPENLANE_TAG=${OPENLANE_TAG}" >> $GITHUB_ENV
-
-      - name: Guardar Versión de OpenLane
-        if: steps.cache-ol.outputs.cache-hit != 'true'
-        run: |
-            echo "Guardando la imagen de OpenLane con etiqueta: $OPENLANE_TAG"
-            docker save -o ${{ github.workspace }}/OL/cached_image.tar efabless/openlane:${OPENLANE_TAG}
-        
-
-  Run:
-    runs-on: ubuntu-latest
-    needs: Instalacion
-    if: success()
-    steps:
-      - name: Buscar Archivos de test
-        uses: actions/checkout@v3
-        
-      - name: Restaurar dependencias
-        uses: actions/cache@v2
-        with:
-          path: |
-            /home/runner/.volare
-            ${{ github.workspace }}/OL
-          key: cache-key-${{ runner.os }}
-          
-      - name: Restaurar docker
-        run: |
-          docker load -i ${{ github.workspace }}/OL/cached_image.tar
-          cp -r ${{ github.workspace }}/src ${{ github.workspace }}/OL/OpenLane/designs/
-
-          # Check Docker images
-          echo "Etiquetas disponibles para 'efabless/openlane':"
-          docker images --format '{{.Repository}}:{{.Tag}}' | grep '^efabless/openlane'
-
-          # Como no se mantiene la variable, reasignarla.
-          OPENLANE_TAG=$(docker images --format '{{.Tag}}' | grep -E '^[0-9a-f]{40}$' | head -n 1)
-          echo "OPENLANE_TAG=${OPENLANE_TAG}" >> $GITHUB_ENV
-          echo "Etiqueta detectada para OpenLane: ${{ env.OPENLANE_TAG }}"
-          
-      - name: Run Nueva
-        uses: addnab/docker-run-action@v3
-        with:
-          image: efabless/openlane:${{ env.OPENLANE_TAG }}
-          options: --rm -v ${{ github.workspace }}:${{ github.workspace }} -v ${{ github.workspace }}/OL/OpenLane:/openlane -v ${{ github.workspace }}/OL/OpenLane/empty:/openlane/install -v /home/runner/.volare:/home/runner/.volare -e PDK_ROOT=/home/runner/.volare -e PDK=sky130A
-          run: |
-            ./flow.tcl -overwrite -design src -run_path /home/runner/work/Openlane_Actions_test/Openlane_Actions_test/runs -tag wokwi
-      
-      - name: Prerequisitos de PNG
-        uses: awalsh128/cache-apt-pkgs-action@latest
-        with:
-          packages: librsvg2-bin pngquant ghdl-llvm # librsvg2-bin for rsvg-convert; pngquant for heavy PNG compression.
-          version: tt10 # I think naming a version builds a reusable packages cache for that name.
-      
-      - name: Usar Archivos de tiny tapeout
-        uses: actions/checkout@v4
-        with:
-          repository: tinytapeout/tt-support-tools
-          path: tt
-          ref: tt10
-        
-      - name: Instalar Prerequisitos
-        shell: bash
-        run: pip install -r tt/requirements.txt
-
-      - name: Inicializar configuración tipo Tiny-Tapeout
-        shell: bash
-        run: ./tt/tt_tool.py --create-user-config
-        
-      - name: Publish GDS artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: GDS
-          path: |
-            src/*
-            runs/wokwi/results/final/*
-            runs/wokwi/reports/metrics.csv
-            runs/wokwi/reports/synthesis/1-synthesis*
-            runs/wokwi/OPENLANE_VERSION
-            runs/wokwi/PDK_SOURCES
-            runs/wokwi/config.tcl
-            LICENSE
-            
-      - name: Render PNG from GDS
-        shell: bash
-        run: './tt/tt_tool.py --create-png 2>&1 || echo "WARNING: Failed to render PNG preview from GDS; error $?"'
-
-      - name: Upload gds_render (png) artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: gds_render
-          path: 'gds_render.png'
-          
-  viewer:
-    needs: Run
-    runs-on: ubuntu-latest
-    permissions:
-      pages: write
-      id-token: write
-    steps:
-      - name: Checkout GDS2glTF repo
-        uses: actions/checkout@v4
-        with:
-          repository: TinyTapeout/GDS2glTF
-          fetch-depth: 0
-  
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-          cache: 'pip'
-  
-      - name: Download GDS artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: GDS
-  
-      - name: Download gds_render (png) artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: gds_render
-          path: gh-pages
-          
-      - name: gds2gltf
-        shell: bash
-        run: |
-          pip install -r requirements.txt
-          if [ -f tt_submission/tool_versions.json ]; then
-            git checkout ihp-sg13g2
-          fi
-          cp runs/wokwi/results/final/*.gds tinytapeout.gds
-          python3 gds2gltf.py tinytapeout.gds
-          cp tinytapeout.gds.gltf gh-pages/tinytapeout.gds.gltf
-  
-      - name: Generate HTML pages that redirects to viewer
-        shell: bash
-        run: |
-          cat << EOF >> gh-pages/index.html
-            <!DOCTYPE html>
-            <html lang="en">
-            <head>
-              <meta charset="UTF-8">
-              <meta http-equiv="X-UA-Compatible" content="IE=edge">
-              <meta name="viewport" content="width=device-width, initial-scale=1.0">
-              <title>Redirecting to GDS Viewer...</title>
-            </head>
-            <body>
-              <script>
-                location.href = "https://gds-viewer.tinytapeout.com/?model=" + encodeURIComponent(location.href + '/tinytapeout.gds.gltf');
-              </script>
-            </body>
-            </html>
-          EOF
-  
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: 'gh-pages'
-  
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
-  
-      - name: Check for failure
-        if: failure()
-        shell: bash
-        run: |
-          echo "Failed to deploy to GitHub Pages, please follow the link to troubleshoot: https://tinytapeout.com/faq/#my-github-action-is-failing-on-the-pages-part"
-  
-          cat << EOF >> $GITHUB_STEP_SUMMARY
-          # Error
-          Failed to deploy to GitHub Pages. [Click here for instructions how to fix](https://tinytapeout.com/faq/#my-github-action-is-failing-on-the-pages-part).
-          EOF
-  
+runs:
+  using: 'composite'
+  steps:
+    - name: Set up environment variables
+      shell: bash
+      env:
+        FLOW: ${{ inputs.flow }}
+      run: |
+        if [ "$FLOW" == "openlane1" ]
+        then
+          # REMINDER: When updating the OpenLane version do not forget to change the PDKs used for
+          #           other actions in this repository precheck/action.yml, gl_test/action.yml,
+          #           and eqy_test/action.yml
+          #           PDK_VERSION=cd1748bb197f9b7af62a54507de6624e30363943
+          sed 's/^ *//' << __EOF >> $GITHUB_ENV
+            FLOW=openlane1
+            FLOW_ARG=
+            OPENLANE_TAG=2024.04.22
+            OPENLANE_IMAGE_NAME=efabless/openlane:2024.04.22
+            OPENLANE_ROOT=/home/runner/openlane
+            PDK_ROOT=/home/runner/pdk
+            PDK=sky130A
+        __EOF
+        elif [ "$FLOW" == "openlane2" ]
+        then
+          sed 's/^ *//' << __EOF >> $GITHUB_ENV
+            FLOW=openlane2
+            FLOW_ARG=--openlane2
+            OPENLANE2_TAG=2.1.9
+            PDK_ROOT=/home/runner/pdk
+            PDK=sky130A
+        __EOF
+        else
+          echo "Invalid flow '$FLOW'" >&2
           exit 1
-  
-      - name: Display preview in workflow summary
-        shell: bash
-        run: |
-          PAGE_URL=${{ steps.deployment.outputs.page_url }}
-          PAGE_URL=$(echo "$PAGE_URL" | sed -e 's/\/$//')
-          cat << EOF >> $GITHUB_STEP_SUMMARY
-          # 3D Viewer
-          [open 3D viewer](https://gds-viewer.tinytapeout.com/?model=$PAGE_URL/tinytapeout.gds.gltf)
-  
-          # 2D Preview
-          ![png]($PAGE_URL/gds_render.png)
-          EOF
+        fi
+
+    # Install packages for 'Render PNG from GDS' step and ghdl to process VHDL files:
+    - name: Install prerequisites
+      uses: awalsh128/cache-apt-pkgs-action@latest
+      with:
+        packages: librsvg2-bin pngquant ghdl-llvm # librsvg2-bin for rsvg-convert; pngquant for heavy PNG compression.
+        version: tt10 # I think naming a version builds a reusable packages cache for that name.
+
+    - name: Checkout tt-support-tools repo
+      uses: actions/checkout@v4
+      with:
+        repository: "${{ inputs.tools-repo }}"
+        path: tt
+        ref: "${{ inputs.tools-ref }}"
+
+    - name: Setup python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+        cache: 'pip' # caching pip dependencies
+
+    - name: Install tt-support-tools dependencies
+      shell: bash
+      run: pip install -r tt/requirements.txt
+
+    - name: Fetch verilog and build config
+      shell: bash
+      run: ./tt/tt_tool.py --create-user-config $FLOW_ARG
+
+    - name: Install OpenLane
+      shell: bash
+      run: |
+        if [ "$FLOW" == "openlane1" ]
+        then
+          git clone --depth=1 --branch $OPENLANE_TAG https://github.com/The-OpenROAD-Project/OpenLane.git $OPENLANE_ROOT
+          cd $OPENLANE_ROOT
+          make
+        elif [ "$FLOW" == "openlane2" ]
+        then
+          pip install openlane==$OPENLANE2_TAG
+        fi
+
+    - name: Make GDS with OpenLane
+      shell: bash
+      run: ./tt/tt_tool.py --harden $FLOW_ARG
+
+    - name: Show build files (for debugging)
+      shell: bash
+      run: find runs/wokwi/
+
+    - name: Linter output
+      if: always()
+      shell: bash
+      run: |
+        if [ "$FLOW" == "openlane1" ]
+        then
+          LINTER_LOG="runs/wokwi/logs/synthesis/linter.log"
+        elif [ "$FLOW" == "openlane2" ]
+        then
+          LINTER_LOG="runs/wokwi/*-verilator-lint/verilator-lint.log"
+        fi
+
+        LINTER_LOG=($LINTER_LOG)
+        LINTER_LOG="${LINTER_LOG[0]}"
+
+        echo "DEBUG LINTER_LOG *$LINTER_LOG*"
+        cat $LINTER_LOG
+        echo "END DEBUG"
+
+        if [ -s "$LINTER_LOG" ]; then
+          set +e
+          count_error=$(egrep -i "^%Error"   $LINTER_LOG | wc -l)
+          count_warn=$( egrep -i "^%Warning" $LINTER_LOG | wc -l)
+          count_other=$(egrep -i "^%"        $LINTER_LOG | egrep -v "%(Warning|Error)" | wc -l)
+          set -e
+
+          open=""
+          summary=""
+          icon=":green_circle:"
+          if [ $count_other -gt 0 ]; then
+            summary="$count_other message(s)"
+            icon=":orange_circle:"
+          fi
+          if [ $count_warn -gt 0 ]; then
+            summary="$count_warn warning(s)"
+            icon=":orange_circle:"
+          fi
+          if [ $count_error -gt 0 ]; then
+            summary="$count_error error(s)"
+            icon=":red_circle:"
+            open="open"
+          fi
+          if [ -n "$summary" ]; then
+            summary="[$summary]"
+          fi
+
+          echo "<details ${open}>" >> $GITHUB_STEP_SUMMARY
+          echo "<summary><h1>Linter output&nbsp;&nbsp;<h4>${summary} ${icon}</h4></h1></summary>" >> $GITHUB_STEP_SUMMARY
+          echo "<pre>" >> $GITHUB_STEP_SUMMARY
+          # Print each line of the file preceeded by four spaces:
+          sed 's/^/    /' < $LINTER_LOG >> $GITHUB_STEP_SUMMARY
+          echo "</pre>" >> $GITHUB_STEP_SUMMARY
+          echo "</details>" >> $GITHUB_STEP_SUMMARY
+        fi
+
+    - name: Yosys warnings
+      shell: bash
+      run: ./tt/tt_tool.py --print-warnings $FLOW_ARG >> $GITHUB_STEP_SUMMARY
+
+    - name: Routing summary
+      shell: bash
+      run: ./tt/tt_tool.py --print-stats $FLOW_ARG >> $GITHUB_STEP_SUMMARY
+
+    - name: Cell usage summary
+      shell: bash
+      run: ./tt/tt_tool.py --print-cell-category $FLOW_ARG >> $GITHUB_STEP_SUMMARY
+
+    - name: Publish build logs
+      if: success() || failure()
+      uses: actions/upload-artifact@v4
+      with:
+        name: GDS_logs
+        path: |
+          src/*
+          runs/wokwi/*
+
+    - name: Prepare tt_submission artifact
+      shell: bash
+      run: |
+        mkdir -p tt_submission
+        mkdir -p tt_submission/stats
+        TOP_MODULE=$(./tt/tt_tool.py --print-top-module $FLOW_ARG)
+        if [ "$FLOW" == "openlane1" ]
+        then
+          cp runs/wokwi/results/final/commit_id.json tt_submission/
+          cp runs/wokwi/results/final/{gds,lef,spef}/${TOP_MODULE}.* tt_submission/
+          cp runs/wokwi/results/final/verilog/gl/${TOP_MODULE}.v tt_submission/
+          cp runs/wokwi/{OPENLANE_VERSION,PDK_SOURCES,config.tcl} tt_submission/
+          cp runs/wokwi/reports/metrics.csv tt_submission/stats/metrics.csv
+          cp runs/wokwi/reports/synthesis/1-synthesis.AREA_0.stat.rpt tt_submission/stats/synthesis-stats.txt
+        elif [ "$FLOW" == "openlane2" ]
+        then
+          cp runs/wokwi/final/commit_id.json tt_submission/
+          cp runs/wokwi/final/{gds,lef,spef/*}/${TOP_MODULE}.* tt_submission/
+          cp runs/wokwi/final/pnl/${TOP_MODULE}.pnl.v tt_submission/${TOP_MODULE}.v
+          cp runs/wokwi/{OPENLANE_VERSION,PDK_SOURCES,resolved.json} tt_submission/
+          cp runs/wokwi/final/metrics.csv tt_submission/stats/metrics.csv
+          cp runs/wokwi/*-yosys-synthesis/reports/stat.log tt_submission/stats/synthesis-stats.txt
+        fi
+
+    - name: Publish tt_submission artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: tt_submission
+        path: |
+          src/*
+          docs/*
+          tt_submission/*
+          info.yaml
+          LICENSE
+
+    # Create and store PNG...
+    - name: Render PNG from GDS
+      shell: bash
+      run: './tt/tt_tool.py --create-png $FLOW_ARG 2>&1 || echo "WARNING: Failed to render PNG preview from GDS; error $?"'
+
+    - name: Upload gds_render (png) artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: gds_render
+        path: 'gds_render.png'
