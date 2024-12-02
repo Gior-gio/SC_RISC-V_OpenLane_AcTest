@@ -8,10 +8,13 @@ jobs:
   docs:
     runs-on: ubuntu-24.04
     steps:
-      - name: Checkout repo
-        uses: actions/checkout@v4
-        with:
-          submodules: recursive
+      # Paso 1: Clonar el repositorio de soporte de herramientas
+    - name: Checkout tt-support-tools repo
+      uses: actions/checkout@v4
+      with:
+        repository: TinyTapeout/tt-support-tools
+        path: tt
+        ref: tt10
 
       # Paso 2: Configurar Python e instalar dependencias
       - name: Setup python
