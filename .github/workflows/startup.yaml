@@ -1,0 +1,34 @@
+name: startup
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  docs:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      # Paso 2: Configurar Python e instalar dependencias
+      - name: Setup python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install Python dependencies
+        run: pip install -r tt/requirements.txt
+
+      # Paso 3: Instalar herramientas adicionales
+      - name: Install Pandoc & GHDL
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y pandoc texlive-xetex librsvg2-bin ghdl-llvm
+
+      # Paso 4: Verificar y construir documentación
+      - name: Check docs (info.yaml)
+        run: ./tt/tt_tool.py --check-docs
