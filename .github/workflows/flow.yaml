@@ -69,8 +69,8 @@ jobs:
       - name: Run OpenLane Flow
         run: |
           cd OpenLane
-          docker run --rm -v $(pwd)/Design:/work/ -w /work openroad/openlane:latest flow.tcl -design Design
-          openroad/openlane:latest \
+          docker run --rm -v $(pwd)/Design:/work/ -w /work efabless/openlane flow.tcl -design Design
+          efabless/openlane \
           flow.tcl -design Design
 
       - name: Upload results
