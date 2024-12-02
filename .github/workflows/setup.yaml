@@ -34,7 +34,7 @@ jobs:
       - name: Install Python dependencies
         run: |
           pip3 install --upgrade pip
-          pip3 install -r /Dependencies/requirements_python.txt
+          pip3 install -r Dependencies/requirements_python.txt
 
       - name: Clone OpenLane repository
         run: |
