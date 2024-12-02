@@ -44,3 +44,9 @@ jobs:
         run: |
           cd OpenLane
           make test
+
+      - name: Save OpenLane setup
+        uses: actions/upload-artifact@v3
+        with:
+          name: openlane-setup
+          path: OpenLane/

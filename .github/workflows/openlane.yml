@@ -1,45 +1,34 @@
 name: OpenLane
 
 on:
-  push:
-    branches:
-      - main
-  pull_request:
-    branches:
-      - main
+  workflow_run:
+    workflows: ["Setup OpenLane"]
+    types:
+      - completed
 
 jobs:
   run-openlane:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
 
     steps:
-      # 1. Checkout repository
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      # 2. Set up Docker
-      - name: Set up Docker
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y docker.io
-          sudo systemctl start docker
-          sudo systemctl enable docker
+      - name: Download OpenLane setup
+        uses: actions/download-artifact@v3
+        with:
+          name: openlane-setup
+          path: OpenLane/
 
-      # 3. Pull OpenLane Docker image
-      - name: Pull OpenLane Docker image
-        run: |
-          docker pull theopenroad/openlane:latest
-
-      # 4. Run OpenLane with the design
       - name: Run OpenLane Flow
         run: |
-          docker run --rm -v $(pwd):/work -w /work \
+          cd OpenLane
+          docker run --rm -v $(pwd)/Design:/work/designs/Design -w /work \
           theopenroad/openlane:latest \
           flow.tcl -design Design
 
-      # 5. Save results as artifact
       - name: Upload results
         uses: actions/upload-artifact@v3
         with:
           name: openlane-results
-          path: runs/
+          path: OpenLane/runs/
