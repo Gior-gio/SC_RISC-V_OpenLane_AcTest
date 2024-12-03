@@ -45,17 +45,12 @@ jobs:
           cd OpenLane
           make test
 
-      - name: Save OpenLane setup
-        if: success()
-        uses: actions/upload-artifact@v4
-        with:
-          name: openlane-setup
-          path: OpenLane/
-
-      - name: Save OpenLane setup
-        if: success()
+      - name: Compress OpenLane setup
         run: |
           tar -czf openlane-setup.tar.gz OpenLane
+        
+      - name: Save OpenLane setup
+        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: openlane-setup
