@@ -75,6 +75,11 @@ jobs:
         run: |
           tar -xzf OpenLane/openlane-setup.tar.gz -C OpenLane
 
+      - name: Mount OpenLane
+        run: |
+          cd OpenLane
+          make mount
+
       - name: Run OpenLane Flow
         run: |
           set -e  # Habilita el modo de salida inmediata en caso de error
