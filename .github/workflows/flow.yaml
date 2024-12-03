@@ -24,7 +24,7 @@ jobs:
           swig \
           cmake 
 
-      - name: Install Python dSependencies
+      - name: Install Python Dependencies
         run: |
           pip3 install --upgrade pip
           pip3 install -r Dependencies/requirements_python.txt
@@ -46,6 +46,7 @@ jobs:
           make test
 
       - name: Save OpenLane setup
+        if: success()
         uses: actions/upload-artifact@v3
         with:
           name: openlane-setup
@@ -68,10 +69,9 @@ jobs:
 
       - name: Run OpenLane Flow
         run: |
+          set -e  # Habilita el modo de salida inmediata en caso de error
           cd OpenLane
-          docker run --rm -v $(pwd)/Design:/work/ -w /work efabless/openlane flow.tcl -design Design
-          efabless/openlane \
-          flow.tcl -design Design
+          docker run --rm -v $(pwd)/Project:/work/ -w /work efabless/openlane flow.tcl -design Project
 
       - name: Upload results
         uses: actions/upload-artifact@v3
