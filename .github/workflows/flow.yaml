@@ -47,10 +47,19 @@ jobs:
 
       - name: Save OpenLane setup
         if: success()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: openlane-setup
           path: OpenLane/
+
+      - name: Save OpenLane setup
+        if: success()
+        run: |
+          tar -czf openlane-setup.tar.gz OpenLane
+        uses: actions/upload-artifact@v4
+        with:
+          name: openlane-setup
+          path: openlane-setup.tar.gz
 
 
   run-openlane:
@@ -62,19 +71,23 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Download OpenLane setup
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: openlane-setup
           path: OpenLane/
+
+      - name: Extract OpenLane setup
+        run: |
+          tar -xzf OpenLane/openlane-setup.tar.gz -C OpenLane
 
       - name: Run OpenLane Flow
         run: |
           set -e  # Habilita el modo de salida inmediata en caso de error
           cd OpenLane
-          docker run --rm -v $(pwd)/Project:/work/ -w /work efabless/openlane flow.tcl -design Project
-
+          docker run --rm -v $(pwd)/Project:/work/designs/Project -w /work efabless/openlane flow.tcl -design Project
+        
       - name: Upload results
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: openlane-results
           path: OpenLane/runs/
